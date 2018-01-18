@@ -37,7 +37,7 @@
     "url": "https://github.com/jhfrintrop/node-pcsclite.git"
   },
   "scripts": {
-    "prebuild": "prebuild --all --strip && mv -v prebuilds/@pokusew/*.tar.gz prebuilds/ && rm -rf prebuilds/@pokusew/",
+    "prebuild": "prebuild --all --strip && mv -v prebuilds/@pokusew/*.tar.gz prebuilds/ && rm -rfv prebuilds/@pokusew/",
     "install": "prebuild-install || node-gyp rebuild",
     "test": "mocha"
   },
