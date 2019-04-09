@@ -1,6 +1,6 @@
 # node-pcsclite
 
-[![npm](https://img.shields.io/npm/v/@pokusew/pcsclite.svg?maxAge=2592000)](https://www.npmjs.com/package/@pokusew/pcsclite)
+[![npm](https://img.shields.io/npm/v/@pokusew/pcsclite.svg)](https://www.npmjs.com/package/@pokusew/pcsclite)
 [![node-pcsclite channel on discord](https://img.shields.io/badge/discord-join%20chat-61dafb.svg)](https://discord.gg/bg3yazg)
 
 Bindings over pcsclite to access Smart Cards. It works in **Linux**, **macOS** and **Windows**.
@@ -64,60 +64,91 @@ npm install @pokusew/pcsclite --save
 ## Example
 
 ```javascript
-const pcsclite = require('pcsclite');
+const pcsclite = require('@pokusew/pcsclite');
 
 const pcsc = pcsclite();
 
-pcsc.on('reader', function(reader) {
+pcsc.on('reader', (reader) => {
 
     console.log('New reader detected', reader.name);
 
-    reader.on('error', function(err) {
-        console.log('Error(', this.name, '):', err.message);
+    reader.on('error', err => {
+        console.log('Error(', reader.name, '):', err.message);
     });
 
-    reader.on('status', function(status) {
-        console.log('Status(', this.name, '):', status);
-        /* check what has changed */
-        const changes = this.state ^ status.state;
-        if (changes) {
-            if ((changes & this.SCARD_STATE_EMPTY) && (status.state & this.SCARD_STATE_EMPTY)) {
-                console.log("card removed");/* card removed */
-                reader.disconnect(reader.SCARD_LEAVE_CARD, function(err) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log('Disconnected');
-                    }
-                });
-            } else if ((changes & this.SCARD_STATE_PRESENT) && (status.state & this.SCARD_STATE_PRESENT)) {
-                console.log("card inserted");/* card inserted */
-                reader.connect({ share_mode : this.SCARD_SHARE_SHARED }, function(err, protocol) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log('Protocol(', reader.name, '):', protocol);
-                        reader.transmit(new Buffer([0x00, 0xB0, 0x00, 0x00, 0x20]), 40, protocol, function(err, data) {
-                            if (err) {
-                                console.log(err);
-                            } else {
-                                console.log('Data received', data);
-                                reader.close();
-                                pcsc.close();
-                            }
-                        });
-                    }
-                });
-            }
+    reader.on('status', (status) => {
+
+        console.log('Status(', reader.name, '):', status);
+
+        // check what has changed
+        const changes = reader.state ^ status.state;
+
+        if (!changes) {
+            return;
         }
+
+		// noinspection JSBitwiseOperatorUsage
+        if ((changes & reader.SCARD_STATE_EMPTY) && (status.state & reader.SCARD_STATE_EMPTY)) {
+
+            console.log("card removed");
+
+            reader.disconnect(reader.SCARD_LEAVE_CARD, err => {
+
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+
+                console.log('Disconnected');
+
+            });
+
+            return;
+
+        }
+
+		// noinspection JSBitwiseOperatorUsage
+        if ((changes & reader.SCARD_STATE_EMPTY) && (status.state & reader.SCARD_STATE_EMPTY)) {
+
+            console.log("card inserted");
+
+            reader.connect({ share_mode: reader.SCARD_SHARE_SHARED }, (err, protocol) => {
+
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+
+                console.log('Protocol(', reader.name, '):', protocol);
+
+                reader.transmit(Buffer.from([0x00, 0xB0, 0x00, 0x00, 0x20]), 40, protocol, (err, data) => {
+
+                    if (err) {
+                        console.log(err);
+                        return;
+                    }
+
+                    console.log('Data received', data);
+                    reader.close();
+                    pcsc.close();
+
+                });
+
+            });
+
+            // noinspection UnnecessaryReturnStatementJS
+            return;
+        }
+
     });
 
-    reader.on('end', function() {
-        console.log('Reader',  this.name, 'removed');
+    reader.on('end', () => {
+        console.log('Reader', reader.name, 'removed');
     });
+
 });
 
-pcsc.on('error', function(err) {
+pcsc.on('error', err => {
     console.log('PCSC error', err.message);
 });
 ```
@@ -147,6 +178,9 @@ Emitted whenever a new card reader is detected.
 
 It frees the resources associated with this PCSCLite instance. At a low level it calls [`SCardCancel`](https://pcsclite.alioth.debian.org/api/group__API.html#gaacbbc0c6d6c0cbbeb4f4debf6fbeeee6) so it stops watching for new readers.
 
+#### pcsclite.readers
+
+An object containing all detected readers by name. Updated as readers are attached and removed.
 
 ### Class: CardReader
 
